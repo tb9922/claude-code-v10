@@ -356,6 +356,7 @@ const DEFENSE_CATEGORIES = {
 
 const FlowEditor = ({ logic, setLogic }) => {
     const [selectedNodeId, setSelectedNodeId] = useState(null);
+    const [viewMode, setViewMode] = useState('flowchart'); // 'flowchart' or 'mindmap'
     const [scale, setScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -559,8 +560,100 @@ const FlowEditor = ({ logic, setLogic }) => {
         }
     };
 
+    // Mind Map renderer
+    const renderMindMap = () => {
+        const phaseGroups = {};
+        Object.entries(logic).forEach(([id, node]) => {
+            if (!phaseGroups[node.phase]) phaseGroups[node.phase] = [];
+            phaseGroups[node.phase].push({ id, ...node });
+        });
+
+        return (
+            <div className="flex-1 overflow-auto p-8 bg-slate-900">
+                <div className="max-w-6xl mx-auto">
+                    <h2 className="text-2xl font-bold text-white mb-8 text-center">Call Flow Mind Map</h2>
+                    {PHASE_ORDER.map(phase => {
+                        const stages = phaseGroups[phase] || [];
+                        if (stages.length === 0) return null;
+
+                        return (
+                            <div key={phase} className="mb-8">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+                                        phase === 'ENTRY' ? 'bg-slate-700' :
+                                        phase === 'OPENER' ? 'bg-yellow-700' :
+                                        phase === 'RECOVERY' ? 'bg-orange-700' :
+                                        phase === 'GAUNTLET' ? 'bg-purple-700' :
+                                        phase === 'PITCH' ? 'bg-blue-700' :
+                                        phase === 'GRINDER' ? 'bg-rose-700' :
+                                        phase === 'CLOSE' ? 'bg-emerald-700' :
+                                        phase === 'INBOUND' ? 'bg-emerald-700' :
+                                        phase === 'OMEGA' ? 'bg-purple-700' :
+                                        'bg-slate-600'
+                                    }`}>
+                                        {phase}
+                                    </div>
+                                    <div className="flex-1 h-px bg-slate-700"></div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ml-8">
+                                    {stages.map(stage => (
+                                        <div
+                                            key={stage.id}
+                                            onClick={() => setSelectedNodeId(stage.id)}
+                                            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                                selectedNodeId === stage.id
+                                                ? 'border-blue-500 bg-slate-800 shadow-lg shadow-blue-900/30'
+                                                : 'border-slate-700 bg-slate-800/50 hover:border-slate-600'
+                                            }`}
+                                        >
+                                            <h3 className="font-bold text-white mb-2">{stage.label}</h3>
+                                            {stage.variants && (
+                                                <div className="text-[10px] text-purple-400 mb-2">
+                                                    {stage.variants.length} variants
+                                                </div>
+                                            )}
+                                            <div className="text-xs text-slate-400 mb-3 line-clamp-2">
+                                                {stage.script?.text?.replace(/<[^>]*>/g, '') || stage.variants?.[0]?.text?.replace(/<[^>]*>/g, '') || ''}
+                                            </div>
+                                            {stage.options && stage.options.length > 0 && (
+                                                <div className="space-y-1">
+                                                    <div className="text-[10px] text-slate-500 uppercase font-bold">Leads to:</div>
+                                                    {stage.options.map((opt, i) => (
+                                                        <div key={i} className="flex items-center gap-2 text-[10px]">
+                                                            <div className={`w-2 h-2 rounded-full ${
+                                                                opt.style === 'green' ? 'bg-emerald-500' :
+                                                                opt.style === 'red' ? 'bg-red-500' :
+                                                                opt.style === 'purple' ? 'bg-purple-500' :
+                                                                opt.style === 'rose' ? 'bg-rose-500' :
+                                                                'bg-blue-500'
+                                                            }`}></div>
+                                                            <span className="text-slate-400">{opt.label}</span>
+                                                            <ArrowRight size={10} className="text-slate-600"/>
+                                                            <span className="text-slate-500">{logic[opt.action]?.label || opt.action}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
     return (
       <div className="flex h-full bg-slate-950 text-white overflow-hidden relative">
+        {viewMode === 'mindmap' ? (
+            <>
+                {renderMindMap()}
+            </>
+        ) : (
+        <>
         <div
             className="flex-1 overflow-hidden cursor-grab active:cursor-grabbing bg-slate-900 relative"
             onMouseDown={handleMouseDown}
@@ -658,6 +751,7 @@ const FlowEditor = ({ logic, setLogic }) => {
             </div>
         </div>
 
+        {/* Flowchart Sidebar */}
         <div className={`w-80 bg-slate-900 border-l border-slate-800 flex flex-col transition-all duration-300 ${selectedNodeId ? 'translate-x-0' : 'translate-x-full absolute right-0 h-full'}`}>
            {selectedNodeId && logic[selectedNodeId] ? (
              <div className="flex flex-col h-full z-20 bg-slate-900">
@@ -838,6 +932,50 @@ const FlowEditor = ({ logic, setLogic }) => {
              </div>
            ) : null}
         </div>
+        </>
+        )}
+
+        {/* View Toggle & Sidebar - Always visible */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 flex gap-2">
+            <button
+                onClick={() => setViewMode('flowchart')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    viewMode === 'flowchart'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+            >
+                Flowchart View
+            </button>
+            <button
+                onClick={() => setViewMode('mindmap')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    viewMode === 'mindmap'
+                    ? 'bg-purple-600 text-white shadow-lg'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+            >
+                Mind Map View
+            </button>
+        </div>
+
+        {/* Sidebar - visible in mind map too */}
+        {viewMode === 'mindmap' && selectedNodeId && logic[selectedNodeId] && (
+            <div className="w-80 bg-slate-900 border-l border-slate-800 flex flex-col absolute right-0 h-full z-10">
+                <div className="flex flex-col h-full z-20 bg-slate-900">
+                    <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900">
+                        <h3 className="font-bold text-slate-200 flex items-center gap-2"><Edit3 size={16}/> Edit Stage</h3>
+                        <button onClick={() => {setSelectedNodeId(null)}} className="text-slate-400 hover:bg-slate-800 p-2 rounded"><X size={16}/></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4">
+                        <div className="text-sm text-slate-300">
+                            <div className="font-bold mb-2">{logic[selectedNodeId].label}</div>
+                            <div className="text-xs text-slate-500">Click "Flowchart View" to edit this stage</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
     );
 };
