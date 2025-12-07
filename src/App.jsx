@@ -446,6 +446,60 @@ const FlowEditor = ({ logic, setLogic }) => {
        setLogic(prev => ({ ...prev, [id]: { ...prev[id], script: { ...prev[id].script, text, ta } } }));
     };
 
+    // Variant Management
+    const convertToVariants = (id) => {
+      const node = logic[id];
+      if (node.variants) return; // Already has variants
+      const currentScript = node.script || { text: "", ta: "Adult" };
+      setLogic(prev => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          variants: [{ name: "Variant 1", text: currentScript.text, ta: currentScript.ta }],
+          script: undefined
+        }
+      }));
+    };
+
+    const convertToSingleScript = (id) => {
+      const node = logic[id];
+      if (!node.variants) return; // Already single script
+      const firstVariant = node.variants[0] || { text: "", ta: "Adult" };
+      setLogic(prev => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          script: { text: firstVariant.text, ta: firstVariant.ta, note: firstVariant.note },
+          variants: undefined
+        }
+      }));
+    };
+
+    const addVariant = (id) => {
+      setLogic(prev => ({
+        ...prev,
+        [id]: {
+          ...prev[id],
+          variants: [...(prev[id].variants || []), { name: "New Variant", text: "Edit script here...", ta: "Adult" }]
+        }
+      }));
+    };
+
+    const updateVariant = (id, idx, field, value) => {
+      const newVariants = [...logic[id].variants];
+      newVariants[idx] = { ...newVariants[idx], [field]: value };
+      setLogic(prev => ({ ...prev, [id]: { ...prev[id], variants: newVariants } }));
+    };
+
+    const removeVariant = (id, idx) => {
+      const newVariants = logic[id].variants.filter((_, i) => i !== idx);
+      if (newVariants.length === 0) {
+        convertToSingleScript(id);
+      } else {
+        setLogic(prev => ({ ...prev, [id]: { ...prev[id], variants: newVariants } }));
+      }
+    };
+
     const addOption = (id) => {
       setLogic(prev => ({
         ...prev,
@@ -610,13 +664,112 @@ const FlowEditor = ({ logic, setLogic }) => {
                             {PHASE_ORDER.map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
                     </div>
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Script (HTML)</label>
-                        <textarea
-                            value={logic[selectedNodeId].script?.text || ""}
-                            onChange={(e) => updateScript(selectedNodeId, e.target.value, logic[selectedNodeId].script?.ta)}
-                            className="w-full h-32 bg-slate-800 border border-slate-700 rounded p-2 text-xs font-mono focus:border-blue-500 outline-none resize-none leading-relaxed"
-                        />
+                    {/* Script / Variants Section */}
+                    <div className="space-y-3 pt-4 border-t border-slate-800">
+                        <div className="flex justify-between items-center">
+                            <label className="text-xs font-bold text-slate-500 uppercase">
+                                {logic[selectedNodeId].variants ? 'Script Variants' : 'Script (HTML)'}
+                            </label>
+                            {!logic[selectedNodeId].variants ? (
+                                <button
+                                    onClick={() => convertToVariants(selectedNodeId)}
+                                    className="text-[10px] bg-purple-600 hover:bg-purple-500 px-2 py-1 rounded flex items-center gap-1"
+                                    title="Convert to multiple variant scripts"
+                                >
+                                    <Plus size={12}/> Add Variants
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => convertToSingleScript(selectedNodeId)}
+                                    className="text-[10px] bg-slate-600 hover:bg-slate-500 px-2 py-1 rounded flex items-center gap-1"
+                                    title="Convert back to single script"
+                                >
+                                    Single Script
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Single Script Mode */}
+                        {!logic[selectedNodeId].variants && (
+                            <div className="space-y-2">
+                                <textarea
+                                    value={logic[selectedNodeId].script?.text || ""}
+                                    onChange={(e) => updateScript(selectedNodeId, e.target.value, logic[selectedNodeId].script?.ta || "Adult")}
+                                    className="w-full h-32 bg-slate-800 border border-slate-700 rounded p-2 text-xs font-mono focus:border-blue-500 outline-none resize-none leading-relaxed"
+                                    placeholder="Enter script HTML..."
+                                />
+                                <div>
+                                    <label className="text-[10px] text-slate-500 uppercase">Transactional Analysis</label>
+                                    <input
+                                        value={logic[selectedNodeId].script?.ta || "Adult"}
+                                        onChange={(e) => updateScript(selectedNodeId, logic[selectedNodeId].script?.text || "", e.target.value)}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded p-1.5 text-xs focus:border-blue-500 outline-none"
+                                        placeholder="e.g., Adult, Rebellious Child"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Variants Mode */}
+                        {logic[selectedNodeId].variants && (
+                            <div className="space-y-3">
+                                {logic[selectedNodeId].variants.map((variant, idx) => (
+                                    <div key={idx} className="bg-slate-800/50 p-3 rounded border border-slate-700 space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] text-slate-500 uppercase">Variant {idx + 1}</span>
+                                            <button
+                                                onClick={() => removeVariant(selectedNodeId, idx)}
+                                                className="text-slate-500 hover:text-red-400"
+                                            >
+                                                <X size={12}/>
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 uppercase">Name</label>
+                                            <input
+                                                value={variant.name || ""}
+                                                onChange={(e) => updateVariant(selectedNodeId, idx, 'name', e.target.value)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs focus:border-blue-500 outline-none"
+                                                placeholder="e.g., Lost Lamb, Authority"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 uppercase">Script (HTML)</label>
+                                            <textarea
+                                                value={variant.text || ""}
+                                                onChange={(e) => updateVariant(selectedNodeId, idx, 'text', e.target.value)}
+                                                className="w-full h-24 bg-slate-900 border border-slate-700 rounded p-2 text-xs font-mono focus:border-blue-500 outline-none resize-none"
+                                                placeholder="Enter script HTML..."
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 uppercase">TA</label>
+                                            <input
+                                                value={variant.ta || "Adult"}
+                                                onChange={(e) => updateVariant(selectedNodeId, idx, 'ta', e.target.value)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs focus:border-blue-500 outline-none"
+                                                placeholder="e.g., Adult"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-slate-500 uppercase">Note (optional)</label>
+                                            <input
+                                                value={variant.note || ""}
+                                                onChange={(e) => updateVariant(selectedNodeId, idx, 'note', e.target.value)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs focus:border-blue-500 outline-none"
+                                                placeholder="Usage notes..."
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={() => addVariant(selectedNodeId)}
+                                    className="w-full py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded text-xs font-bold flex items-center justify-center gap-1"
+                                >
+                                    <Plus size={12}/> Add Another Variant
+                                </button>
+                            </div>
+                        )}
                     </div>
                     <div className="space-y-3 pt-4 border-t border-slate-800">
                          <div className="flex justify-between items-center">
