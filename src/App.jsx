@@ -362,6 +362,14 @@ const FlowEditor = ({ logic, setLogic }) => {
     const [isPanning, setIsPanning] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [dragNodeId, setDragNodeId] = useState(null);
+    const [showSaved, setShowSaved] = useState(false);
+
+    // Show "Saved" indicator whenever logic changes
+    useEffect(() => {
+        setShowSaved(true);
+        const timer = setTimeout(() => setShowSaved(false), 2000);
+        return () => clearTimeout(timer);
+    }, [logic]);
 
     // Auto-layout on first load if missing coordinates
     useEffect(() => {
@@ -569,6 +577,11 @@ const FlowEditor = ({ logic, setLogic }) => {
                 <button onClick={() => setScale(s => Math.min(2, s + 0.1))} className="p-2 bg-slate-800 rounded border border-slate-700 hover:bg-slate-700"><ZoomIn size={20}/></button>
                 <button onClick={() => setScale(s => Math.max(0.2, s - 0.1))} className="p-2 bg-slate-800 rounded border border-slate-700 hover:bg-slate-700"><ZoomOut size={20}/></button>
                 <button onClick={createNewNode} className="px-4 py-2 bg-blue-600 rounded border border-blue-500 hover:bg-blue-500 text-sm font-bold flex items-center gap-2"><Plus size={16}/> New Stage</button>
+                {showSaved && (
+                    <div className="px-3 py-2 bg-green-600 rounded border border-green-500 text-white text-sm font-bold flex items-center gap-2 animate-in fade-in">
+                        <Check size={16}/> Changes Saved
+                    </div>
+                )}
             </div>
 
             <div className="absolute top-4 right-4 z-10 flex gap-2">
