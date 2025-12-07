@@ -544,6 +544,13 @@ const FlowEditor = ({ logic, setLogic }) => {
         };
     };
 
+    const resetToDefaults = () => {
+        if (confirm("Reset all stages to default? This will delete all your custom changes and cannot be undone.")) {
+            setLogic(LOGIC_CORE_DEFAULT);
+            setSelectedNodeId(null);
+        }
+    };
+
     return (
       <div className="flex h-full bg-slate-950 text-white overflow-hidden relative">
         <div
@@ -565,6 +572,7 @@ const FlowEditor = ({ logic, setLogic }) => {
             </div>
 
             <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <button onClick={resetToDefaults} className="px-4 py-2 bg-red-600/80 rounded border border-red-500 hover:bg-red-500 text-sm font-bold flex items-center gap-2"><RefreshCw size={16}/> Reset to Defaults</button>
                 <button onClick={downloadLogic} className="px-4 py-2 bg-emerald-600/80 rounded border border-emerald-500 hover:bg-emerald-500 text-sm font-bold flex items-center gap-2"><Download size={16}/> Save Logic</button>
                 <label className="px-4 py-2 bg-slate-700 rounded border border-slate-600 hover:bg-slate-600 text-sm font-bold flex items-center gap-2 cursor-pointer">
                     <Upload size={16}/> Load JSON
